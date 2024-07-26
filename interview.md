@@ -618,4 +618,173 @@ CSS 变量的语法如下：
 JavaScript 中，我们使⽤ less.modifyVars ⽅法来修改 Less 变量的值，从⽽实现了换肤的效
 果。当然，这只是⼀个简单的⽰例代码，实际的换肤功能还需要根据实际需求来进⾏设计和实现。
 
-##  如何实现⽹⻚加载进度条？
+## 如何实现⽹⻚加载进度条？
+
+监听静态资源加载情况
+
+可以通过 window.performance 对象来监听⻚⾯资源加载进度。该对象提供了各种⽅法来获取资
+源加载的详细信息。
+可以使⽤ performance.getEntries() ⽅法获取⻚⾯上所有的资源加载信息。可以使⽤该⽅法
+来监测每个资源的加载状态，计算加载时间，并据此来实现⼀个资源加载进度条。
+下⾯是⼀个简单的实现⽅式：
+
+```javascript
+const resources = window.performance.getEntriesByType("resource");
+const totalResources = resources.length;
+let loadedResources = 0;
+resources.forEach((resource) => {
+  if (resource.initiatorType !== "xmlhttprequest") {
+    // 排除 AJAX 请求
+    resource.onload = () => {
+      loadedResources++;
+      const progress = Math.round((loadedResources / totalResources) * 100);
+      updateProgress(progress);
+    };
+  }
+});
+
+function updateProgress(progress) {
+  // 更新进度条
+}
+```
+
+该代码会遍历所有资源，并注册⼀个 onload 事件处理函数。当每个资源加载完成后，会更新
+loadedResources 变量，并计算当前的进度百分⽐，然后调⽤ updateProgress() 函数来更
+新进度条。需要注意的是，这⾥排除了 AJAX 请求，因为它们不属于⻚⾯资源。
+当所有资源加载完成后，⻚⾯就会完全加载。
+
+### 实现进度条
+
+⽹⻚加载进度条可以通过前端技术实现，⼀般的实现思路是通过监听浏览器的⻚⾯加载事件和资源加
+载事件，来实时更新进度条的状态。下⾯介绍两种实现⽅式。
+
+1. 使⽤原⽣进度条
+   在 HTML5 中提供了 progress 元素，可以通过它来实现⼀个原⽣的进度条。
+
+```html
+<progress id="progressBar" value="0" max="100"></progress>
+```
+
+然后在 JavaScript 中，监听⻚⾯加载事件和资源加载事件，实时更新 progress 元素的 value 属性
+
+```javascript
+const progressBar = document.getElementById("progressBar");
+
+window.addEventListener("load", () => {
+  progressBar.value = 100;
+});
+
+document.addEventListener("readystatechange", () => {
+  const progress = Math.floor((document.readyState / 4) * 100);
+  progressBar.value = progress;
+});
+```
+
+2. 使⽤第三⽅库
+   使⽤第三⽅库可以更加⽅便地实现⽹⻚加载进度条，下⾯以 nprogress 库为例：
+1. 安装 nprogress 库
+
+```shell
+npm install nprogress --save
+```
+
+2. 在⻚⾯中引⼊ nprogress.css 和 nprogress.js
+
+```javascript
+ <link rel="stylesheet" href="/node_modules/nprogress/nprogress.css">
+ <script src="/node_modules/nprogress/nprogress.js"></script>
+```
+
+3. 在 JavaScript 中初始化 nprogress 并监听⻚⾯加载事件和资源加载事件
+
+```javascript
+// 初始化 nprogress
+NProgress.configure({ showSpinner: false });
+
+// 监听⻚⾯加载事件
+window.addEventListener("load", () => {
+  NProgress.done();
+});
+
+// 监听资源加载事件
+document.addEventListener("readystatechange", () => {
+  if (document.readyState === "interactive") {
+    NProgress.start();
+  } else if (document.readyState === "complete") {
+    NProgress.done();
+  }
+});
+```
+
+使⽤ nprogress 可以⾃定义进度条的样式，同时也提供了更多的 API 供我们使⽤，⽐如说⼿动控制
+进度条的显⽰和隐藏，以及⽀持 Promise 和 Ajax 请求的进度条等等。
+
+## 常⻅图⽚懒加载⽅式有哪些？【热度: 1,001】
+
+图⽚懒加载可以延迟图⽚的加载，只有当图⽚即将进⼊视⼝范围时才进⾏加载。这可以⼤⼤减轻⻚⾯
+的加载时间，并降低带宽消耗，提⾼了⽤⼾的体验。以下是⼀些常⻅的实现⽅法：
+
+1. Intersection Observer API
+   Intersection Observer API 是⼀种⽤于异步检查⽂档中元素与视⼝叠加程度的 API。可以将
+   其⽤于检测图⽚是否已经进⼊视⼝，并根据需要进⾏相应的处理。
+
+```javascript
+let observer = new IntersectionObserver(function (entries) {
+  entries.forEach(function (entry) {
+    if (entry.isIntersecting) {
+      const lazyImage = entry.target;
+      lazyImage.src = lazyImage.dataset.src;
+      observer.unobserve(lazyImage);
+    }
+  });
+});
+
+const lazyImages = [...document.querySelectorAll(".lazy")];
+lazyImages.forEach(function (image) {
+  observer.observe(image);
+});
+```
+
+2.  ⾃定义监听器
+    可以通过⾃定义监听器来实现懒加载。其中，应该避免在滚动事件处理程序中频繁进⾏图⽚加
+    载，因为这可能会影响性能。相反，使⽤⾃定义监听器只会在滚动停⽌时进⾏图⽚加载。
+
+```javascript
+function lazyLoad() {
+  const images = document.querySelectorAll(".lazy");
+  const scrollTop = window.pageYOffset;
+  images.forEach((img) => {
+    if (img.offsetTop < window.innerHeight + scrollTop) {
+      img.src = img.dataset.src;
+      img.classList.remove("lazy");
+    }
+  });
+}
+
+let lazyLoadThrottleTimeout;
+document.addEventListener("scroll", function () {
+  if (lazyLoadThrottleTimeout) {
+    clearTimeout(lazyLoadThrottleTimeout);
+  }
+  lazyLoadThrottleTimeout = setTimeout(lazyLoad, 20);
+});
+```
+
+在这个例⼦中，我们使⽤了 setTimeout() 函数来延迟图⽚的加载，以避免在滚动事件的频繁触发
+中对性能的影响。
+⽆论使⽤哪种⽅法，都需要为需要懒加载的图⽚设置占位符，并将未加载的图⽚路径保存在 data 属
+性中，以便在需要时进⾏加载。这些占位符可以是简单的 div 或样式类，⽤于预留图⽚的空间，避免⻚
+⾯布局的混乱。
+
+```html
+<!-- 占位符⽰例 -->
+<div
+  class="lazy-placeholder"
+  style="background-color:#ddd;height: 500px;"
+></div>
+<!-- 图⽚⽰例 -->
+<img class="lazy" data-src="path/to/image.jpg" alt="预览图" />
+```
+
+总体来说，图⽚懒加载是⼀种这很简单，但⾮常实⽤的优化技术，能够显著提⾼⽹⻚的性能和⽤⼾体
+验。
